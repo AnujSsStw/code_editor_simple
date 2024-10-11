@@ -21,20 +21,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { codeProblem, languageOptions } from "@/lib/constants";
+import { codeProblem, CompilerResult, languageOptions } from "@/lib/constants";
 import Editor from "@monaco-editor/react";
 
 export default function Home() {
   const [language, setLanguage] =
     useState<keyof typeof codeProblem.boilerPlateCode>("javascript");
   const [code, setCode] = useState("// some comment");
-  const [output, setOutput] = useState<
-    {
-      input: { nums: number[]; target: number };
-      output: number[];
-      result: string;
-    }[]
-  >([]);
+  const [output, setOutput] = useState<CompilerResult[]>([]);
+  const [error, setError] = useState<any | null>(null);
 
   useEffect(() => {
     if (codeProblem.boilerPlateCode[language] !== undefined) {
@@ -49,60 +44,37 @@ export default function Home() {
   };
 
   const handleRun = async () => {
-    const langD = (await (await fetch("/api/hello")).json()) as Array<{
-      language: string;
-      version: string;
-      aliases: string[];
-    }>;
     const requestData = {
       language: language,
-      version: langD.find((l) => l.language == language)?.version,
+      version: languageOptions.find((l) => l.value === language)?.version,
       files: [
         {
-          content: `${code}\n${codeProblem.testCases
-            .map((v) => {
-              return `${codeProblem.printing(v.input, language)}\n`;
-            })
-            .join("")}`,
+          content: `${code}`,
         },
       ],
     };
 
-    const exec = await fetch("/api/compile", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestData),
-    });
+    try {
+      const exec = (await (
+        await fetch("/api/compile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestData),
+        })
+      ).json()) as {
+        output: CompilerResult[];
+      };
 
-    const response = await exec.json();
-    const code_res: string = response.run.output || response.run.stderr;
-    const pass = [],
-      fail = [];
-    for (let i = 0; i < codeProblem.testCases.length; i++) {
-      const output = codeProblem.testCases[i].output;
-      const res = code_res.split("\n")[i].replace(" ", "");
-      console.log(res, JSON.stringify(output));
+      console.log(exec.output);
 
-      if (JSON.stringify(output) == res) {
-        console.log("Test case", i + 1, "passed");
-        pass.push({
-          input: codeProblem.testCases[i].input,
-          output: codeProblem.testCases[i].output,
-          result: res,
-        });
-      } else {
-        console.log("Test case", i + 1, "failed");
-        fail.push({
-          input: codeProblem.testCases[i].input,
-          output: codeProblem.testCases[i].output,
-          result: res,
-        });
-      }
+      setOutput(exec.output);
+    } catch (e) {
+      // error while running code
+      console.log(e);
+      setError(e);
     }
-
-    setOutput([...pass, ...fail]);
   };
 
   return (
@@ -159,17 +131,15 @@ export default function Home() {
                     <div key={index} className="mb-4">
                       <p className="font-semibold">Input:</p>
                       <pre className="bg-muted p-2 rounded">
-                        nums: {JSON.stringify(testCase.input.nums)}
-                        <br />
-                        target: {testCase.input.target}
+                        {JSON.stringify(testCase.input)}
                       </pre>
                       <p className="font-semibold mt-2">Output:</p>
                       <pre className="bg-muted p-2 rounded">
-                        {JSON.stringify(testCase.output)}
+                        {JSON.stringify(testCase.test_output)}
                       </pre>
                       <p className="font-semibold mt-2">Result:</p>
                       <pre className="bg-muted p-2 rounded">
-                        {testCase.result}
+                        {testCase.code_result}
                       </pre>
                     </div>
                   ))}
