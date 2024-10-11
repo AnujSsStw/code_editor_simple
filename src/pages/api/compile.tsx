@@ -18,7 +18,7 @@ export default async function handler(
     files: { content: string }[];
     args?: any[];
   };
-  // console.log("Request Data:", requestData.files);
+  console.log("Request Data:", requestData.files);
   const endpoint = "https://emkc.org/api/v2/piston/execute";
 
   const ans: CompilerResult[] = [];

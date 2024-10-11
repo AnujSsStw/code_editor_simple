@@ -22,14 +22,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { codeProblem, CompilerResult, languageOptions } from "@/lib/constants";
+import {
+  codeProblem,
+  CompilerResult,
+  generateCode,
+  languageOptions,
+} from "@/lib/constants";
 import { checkCompletion, formatTime } from "@/lib/utils";
 import Editor from "@monaco-editor/react";
 import { MonacoEditorWithReadOnlySection } from "@/components/codeEditor";
 
 export default function CodingChallenge() {
   const [language, setLanguage] =
-    useState<keyof typeof codeProblem.boilerPlateCode>("javascript");
+    useState<keyof typeof codeProblem.bp>("javascript");
   const [code, setCode] = useState("// some comment");
   const [output, setOutput] = useState<CompilerResult[]>([]);
   // const [error, setError] = useState<any | null>(null);
@@ -55,8 +60,8 @@ export default function CodingChallenge() {
   }, [isRunning]);
 
   useEffect(() => {
-    if (codeProblem.boilerPlateCode[language] !== undefined) {
-      setCode(codeProblem.boilerPlateCode[language]);
+    if (codeProblem.bp[language] !== undefined) {
+      setCode(codeProblem.bp[language]);
     } else {
       setCode("// boilerplate code not exist");
     }
@@ -73,7 +78,7 @@ export default function CodingChallenge() {
       version: languageOptions.find((l) => l.value === language)?.version,
       files: [
         {
-          content: `${code}`,
+          content: generateCode(code, language),
         },
       ],
     };

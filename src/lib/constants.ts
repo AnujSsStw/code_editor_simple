@@ -1,5 +1,4 @@
 import { argv } from "process";
-import { formatTime } from "./utils";
 
 export const languageOptions = [
   {
@@ -389,10 +388,150 @@ int main(int argc, char* argv[]) {
   },
   t: { input: [[2, 7, 11, 15], 9] }, // for types
   o: [0, 1], // for types
+  bp: {
+    javascript: `
+function twoSum(nums, target) {
+    // Your code here
+}`,
+
+    python: `
+def twoSum(nums, target):
+    # Your code here
+    pass`,
+
+    java: `
+public static int[] twoSum(int[] nums, int target) {
+    // Your code here
+    return new int[]{0, 0};
+}`,
+
+    cpp: `
+std::vector<int> twoSum(std::vector<int>& nums, int target) {
+    // Your code here
+    return std::vector<int>{0, 0};
+}`,
+
+    go: `
+func twoSum(nums []int, target int) []int {
+    // Your code here
+    return []int{0, 0}
+}`,
+
+    ruby: `
+def two_sum(nums, target)
+    # Your code here
+end`,
+
+    csharp: `
+public static int[] TwoSum(int[] nums, int target) {
+    // Your code here
+    return new int[] {0, 0};
+}`,
+
+    scala: `
+def twoSum(nums: Array[Int], target: Int): Array[Int] = {
+    // Your code here
+    Array(0, 0)
+}`,
+
+    swift: `
+func twoSum(_ nums: [Int], _ target: Int) -> [Int] {
+    // Your code here
+    return [0, 0]
+}`,
+
+    c: `
+void twoSum(int* nums, int numsSize, int target, int* returnArray) {
+    // Your code here
+    returnArray[0] = 0;
+    returnArray[1] = 0;
+}`,
+  },
 };
 
 export interface CompilerResult {
   input: typeof codeProblem.t.input;
   test_output: typeof codeProblem.o;
   code_result: string | unknown | any;
+}
+
+export function generateCode(
+  code: string,
+  language: keyof typeof codeProblem.boilerPlateCode
+) {
+  const boilerPlateCode = codeProblem.boilerPlateCode;
+
+  if (!boilerPlateCode[language]) {
+    throw new Error(`Unsupported language: ${language}`);
+  }
+
+  let template = boilerPlateCode[language];
+
+  // Remove the function declaration based on the language
+  switch (language) {
+    case "javascript":
+      template = template.replace(
+        /function twoSum\(nums, target\) \{[\s\S]*?\}/,
+        code
+      );
+      break;
+    case "python":
+      template = template.replace(
+        /def twoSum\(nums, target\):[\s\S]*?pass/,
+        code
+      );
+      break;
+    case "java":
+      template = template.replace(
+        /public static int\[] twoSum\(int\[] nums, int target\) \{[\s\S]*?return new int\[]\{0, 0\};[\s\S]*?\}/,
+        code
+      );
+      break;
+    case "cpp":
+      template = template.replace(
+        /std::vector<int> twoSum\(std::vector<int>& nums, int target\) \{[\s\S]*?return std::vector<int>\{0, 0\};[\s\S]*?\}/,
+        code
+      );
+      break;
+    case "go":
+      template = template.replace(
+        /func twoSum\(nums \[]int, target int\) \[]int \{[\s\S]*?return \[]int\{0, 0\}[\s\S]*?\}/,
+        code
+      );
+      break;
+    case "ruby":
+      template = template.replace(
+        /def two_sum\(nums, target\)[\s\S]*?end/,
+        code
+      );
+      break;
+    case "csharp":
+      template = template.replace(
+        /public static int\[] TwoSum\(int\[] nums, int target\) \{[\s\S]*?return new int\[] \{0, 0\};[\s\S]*?\}/,
+        code
+      );
+      break;
+    case "scala":
+      template = template.replace(
+        /def twoSum\(nums: Array\[Int], target: Int\): Array\[Int] = \{[\s\S]*?Array\(0, 0\)[\s\S]*?\}/,
+        code
+      );
+      break;
+    case "swift":
+      template = template.replace(
+        /func twoSum\(_ nums: \[Int], _ target: Int\) -> \[Int] \{[\s\S]*?return \[0, 0][\s\S]*?\}/,
+        code
+      );
+      break;
+    case "c":
+      template = template.replace(
+        /void twoSum\(int\* nums, int numsSize, int target, int\* returnArray\) \{[\s\S]*?returnArray\[1] = 0;[\s\S]*?\}/,
+        code
+      );
+      break;
+    default:
+      throw new Error(`Unsupported language: ${language}`);
+  }
+
+  return template;
 }
