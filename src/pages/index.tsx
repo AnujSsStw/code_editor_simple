@@ -101,6 +101,7 @@ export default function CodingChallenge() {
   };
 
   const handleSubmit = async () => {
+    // this function will changed
     await handleRun();
     setIsSubmitted(true);
     setIsRunning(false);
