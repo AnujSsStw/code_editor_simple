@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,38 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { codeProblem, CompilerResult, languageOptions } from "@/lib/constants";
+import { checkCompletion, formatTime } from "@/lib/utils";
 import Editor from "@monaco-editor/react";
+import { MonacoEditorWithReadOnlySection } from "@/components/codeEditor";
 
-export default function Home() {
+export default function CodingChallenge() {
   const [language, setLanguage] =
     useState<keyof typeof codeProblem.boilerPlateCode>("javascript");
   const [code, setCode] = useState("// some comment");
   const [output, setOutput] = useState<CompilerResult[]>([]);
-  const [error, setError] = useState<any | null>(null);
+  // const [error, setError] = useState<any | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [timer, setTimer] = useState(0);
+  const [isRunning, setIsRunning] = useState(true);
+  const [runCount, setRunCount] = useState(0);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      if (isRunning) {
+        setTimer((prevTimer) => prevTimer + 1);
+      }
+    }, 1000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isRunning]);
 
   useEffect(() => {
     if (codeProblem.boilerPlateCode[language] !== undefined) {
@@ -44,6 +67,7 @@ export default function Home() {
   };
 
   const handleRun = async () => {
+    setRunCount((prevCount) => prevCount + 1);
     const requestData = {
       language: language,
       version: languageOptions.find((l) => l.value === language)?.version,
@@ -70,11 +94,26 @@ export default function Home() {
       console.log(exec.output);
 
       setOutput(exec.output);
+      checkCompletion(exec.output, setIsRunning, timer, runCount);
     } catch (e) {
-      // error while running code
-      console.log(e);
-      setError(e);
+      console.log("ERROR WHILE EXECUTING THE CODE MAYBE", e);
     }
+  };
+
+  const handleSubmit = async () => {
+    await handleRun();
+    setIsSubmitted(true);
+    setIsRunning(false);
+    console.log(
+      `Final submission - Time taken: ${formatTime(timer)}, Run count: ${
+        runCount + 1
+      }`
+    );
+  };
+
+  const handlePromptSubmit = async () => {
+    // Implement AI prompt submission logic here
+    console.log("Submitting prompt:", prompt);
   };
 
   return (
@@ -83,70 +122,112 @@ export default function Home() {
         direction="horizontal"
         className="rounded-lg border w-screen"
       >
-        <ResizablePanel defaultSize={50}>
-          <div className="h-full overflow-auto">
+        <ResizablePanel defaultSize={25}>
+          <div className="h-full overflow-auto p-4">
             <CodeProblem />
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={50}>
+        <ResizablePanel defaultSize={75}>
           <ResizablePanelGroup direction="vertical">
-            <ResizablePanel defaultSize={75}>
-              <div className="flex flex-col">
-                <div className="flex justify-between mx-2">
+            {/* prompt */}
+            <ResizablePanel defaultSize={15}>
+              <div className="p-4 h-full overflow-auto">
+                <h2 className="text-lg font-semibold mb-2">Prompt to AI</h2>
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Enter your prompt here"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                  />
+                  <Button onClick={handlePromptSubmit}>Submit Prompt</Button>
+                </div>
+              </div>
+            </ResizablePanel>
+            <ResizableHandle />
+
+            {/* code editor */}
+            <ResizablePanel defaultSize={60}>
+              <div className="flex flex-col h-full">
+                <div className="flex justify-between p-4">
                   <LanguageSelect
                     onSelect={setLanguage}
                     languages={languageOptions}
                   />
-                  <Button variant="default" onClick={handleRun}>
-                    Run
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      setCode(codeProblem.boilerPlateCode[language]);
-                      setOutput([]);
-                    }}
-                  >
-                    Reset
-                  </Button>
+                  <div className="space-x-2">
+                    <span className="mr-4">Time: {formatTime(timer)}</span>
+                    <span className="mr-4">Runs: {runCount}</span>
+                    <Button
+                      variant="default"
+                      onClick={handleRun}
+                      disabled={isSubmitted}
+                    >
+                      Run
+                    </Button>
+                    <Button
+                      variant="default"
+                      onClick={handleSubmit}
+                      disabled={isSubmitted}
+                    >
+                      Submit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setCode(codeProblem.boilerPlateCode[language]);
+                        setOutput([]);
+                      }}
+                      disabled={isSubmitted}
+                    >
+                      Reset
+                    </Button>
+                  </div>
                 </div>
-                <div className="">
-                  <Editor
-                    height="100vh"
+                <div className="flex-grow">
+                  <MonacoEditorWithReadOnlySection
+                    code={code}
+                    handleCodeChange={handleEditorChange}
                     language={language}
-                    value={code}
-                    // @ts-ignore
-                    onChange={handleEditorChange}
-                    theme="vs-dark"
                   />
                 </div>
               </div>
             </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={25}>
-              {output.length > 0 && (
-                <div className="mt-4 overflow-auto h-full">
-                  <h1 className="text-2xl font-bold mb-4">Output</h1>
-                  {output.map((testCase, index) => (
-                    <div key={index} className="mb-4">
-                      <p className="font-semibold">Input:</p>
-                      <pre className="bg-muted p-2 rounded">
-                        {JSON.stringify(testCase.input)}
-                      </pre>
-                      <p className="font-semibold mt-2">Output:</p>
-                      <pre className="bg-muted p-2 rounded">
-                        {JSON.stringify(testCase.test_output)}
-                      </pre>
-                      <p className="font-semibold mt-2">Result:</p>
-                      <pre className="bg-muted p-2 rounded">
-                        {testCase.code_result}
-                      </pre>
-                    </div>
-                  ))}
+            <ResizableHandle />
+
+            {/* output */}
+            {output.length > 0 && (
+              <ResizablePanel defaultSize={25}>
+                <div className="p-4 h-full overflow-auto">
+                  <h2 className="text-lg font-semibold mb-2">Output</h2>
+                  {output.length > 0 ? (
+                    output.map((testCase, index) => (
+                      <div key={index} className="mb-4">
+                        {testCase.code_result.toString().trim() ===
+                        testCase.test_output.toString().trim() ? (
+                          <Badge variant="default">Passed</Badge>
+                        ) : (
+                          <Badge variant="destructive">Failed</Badge>
+                        )}
+                        <p className="font-semibold">Input:</p>
+                        <pre className="bg-muted p-2 rounded">
+                          {JSON.stringify(testCase.input)}
+                        </pre>
+                        <p className="font-semibold mt-2">Output:</p>
+                        <pre className="bg-muted p-2 rounded">
+                          {JSON.stringify(testCase.test_output)}
+                        </pre>
+                        <p className="font-semibold mt-2">Result:</p>
+                        <pre className="bg-muted p-2 rounded">
+                          {testCase.code_result}
+                        </pre>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No output yet. Run your code to see results.</p>
+                  )}
                 </div>
-              )}
-            </ResizablePanel>
+              </ResizablePanel>
+            )}
           </ResizablePanelGroup>
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -165,9 +246,9 @@ const LanguageSelect = ({
 }) => {
   return (
     <Select
-      onValueChange={(v) => {
-        onSelect(v);
-      }}
+      onValueChange={(v) =>
+        onSelect(v as keyof typeof codeProblem.boilerPlateCode)
+      }
     >
       <SelectTrigger className="w-[180px]">
         <SelectValue placeholder="Javascript" />
@@ -185,7 +266,7 @@ const LanguageSelect = ({
 
 const CodeProblem = () => {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div>
       <h1 className="text-3xl font-bold mb-4">{codeProblem.name}</h1>
       <Badge
         variant={
@@ -206,9 +287,7 @@ const CodeProblem = () => {
             <div key={index} className="mb-4">
               <p className="font-semibold">Input:</p>
               <pre className="bg-muted p-2 rounded">
-                nums: {JSON.stringify(testCase.input.nums)}
-                <br />
-                target: {testCase.input.target}
+                {JSON.stringify(testCase.input)}
               </pre>
               <p className="font-semibold mt-2">Output:</p>
               <pre className="bg-muted p-2 rounded">
@@ -238,8 +317,6 @@ const CodeProblem = () => {
             <p className="font-semibold">Input:</p>
             <pre className="bg-muted p-2 rounded">
               nums: {JSON.stringify(codeProblem.examples[0].input.nums)}
-              <br />
-              target: {codeProblem.examples[0].input.target}
             </pre>
             <p className="font-semibold mt-2">Output:</p>
             <pre className="bg-muted p-2 rounded">

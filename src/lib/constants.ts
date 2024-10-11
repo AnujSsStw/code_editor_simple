@@ -1,4 +1,5 @@
 import { argv } from "process";
+import { formatTime } from "./utils";
 
 export const languageOptions = [
   {
@@ -140,6 +141,7 @@ export const codeProblem = {
   ],
   boilerPlateCode: {
     javascript: `
+//#region readonly
 const process = require("process");
 function main() {
     // Test case input
@@ -150,6 +152,7 @@ function main() {
     const result = twoSum(nums, target);
     console.log(JSON.stringify(result));
 }
+//#endregion readonly
 
 function twoSum(nums, target) {
     // Your code here
