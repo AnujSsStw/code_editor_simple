@@ -116,6 +116,7 @@ export default function Home() {
                     height="100vh"
                     language={language}
                     value={code}
+                    // @ts-ignore
                     onChange={handleEditorChange}
                     theme="vs-dark"
                   />
